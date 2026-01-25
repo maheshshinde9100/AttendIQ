@@ -20,14 +20,20 @@ public class AttendanceController {
 
     private final AttendanceService attendanceService;
     private final AIService aiService;
+    private final FaceService faceService; // Added FaceService
 
     @PostMapping("/mark")
     public ResponseEntity<ApiResponse<AttendanceEntity>> markAttendance(
             @AuthenticationPrincipal UserEntity currentUser,
             @RequestBody MarkAttendanceRequest request
     ) {
-        // Step 1: Detect Fraud using AI
-        double confidenceScore = 0.95; // In real usage, this comes from the Face Verification step
+        // Step 1: Real Face Verification
+        double confidenceScore = 0.0;
+        if (request.getFaceEmbedding() != null) {
+            confidenceScore = faceService.verifyFace(currentUser.getId(), request.getFaceEmbedding());
+        }
+
+        // Step 2: Detect Fraud using AI logic (e.g. if confidence is too low)
         boolean isFraudulent = aiService.detectFraud(
                 currentUser, 
                 request.getDeviceId(), 
@@ -35,21 +41,18 @@ public class AttendanceController {
                 confidenceScore
         );
 
-        if (isFraudulent) {
-            // Log it but still mark it as 'PENDING_VERIFICATION' or similar if needed
-            // Or reject it entirely
-        }
-
-        // Step 2: Mark attendance
+        // Step 3: Mark attendance
         AttendanceEntity attendance = attendanceService.markAttendance(
                 currentUser.getId(),
                 isFraudulent ? "FLAGGED" : request.getStatus(),
                 request.getDeviceId(),
                 request.getLocation(),
-                "AI_VERIFIED"
+                confidenceScore > 0 ? "AI_FACE_VERIFIED" : "MANUAL"
         );
         
-        String message = isFraudulent ? "Attendance marked but flagged for review" : "Attendance marked successfully";
+        String message = isFraudulent ? "Attendance marked but flagged for review (Confidence: " + String.format("%.2f", confidenceScore) + ")" 
+                                     : "Attendance marked successfully (Confidence: " + String.format("%.2f", confidenceScore) + ")";
+        
         return ResponseEntity.ok(ApiResponse.success(attendance, message));
     }
 

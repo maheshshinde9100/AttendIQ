@@ -4,8 +4,10 @@ import lombok.Data;
 
 @Data
 public class MarkAttendanceRequest {
+
     private String status;
     private String deviceId;
     private String location;
-    private String verifiedBy;
+    private double[] faceEmbedding;
 }
+
