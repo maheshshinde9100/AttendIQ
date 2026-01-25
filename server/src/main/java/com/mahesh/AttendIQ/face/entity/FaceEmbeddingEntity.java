@@ -20,12 +20,12 @@ public class FaceEmbeddingEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "student_id", nullable = false)
-    private String studentId;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private UserEntity user;
 
-    @Lob
     @Column(name = "embedding", nullable = false)
-    private float[] embedding;
+    private double[] embedding; // Changed to double[] for better precision if needed, or stick to float[]
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -35,4 +35,5 @@ public class FaceEmbeddingEntity {
         this.createdAt = LocalDateTime.now();
     }
 }
+
 
