@@ -1,8 +1,13 @@
 package com.mahesh.attendiq.user.repository;
+
 import com.mahesh.attendiq.user.entity.UserEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
 import java.util.Optional;
 
-public class UserRepository extends JpaRepository<UserEntity,Long>{
+@Repository
+public interface UserRepository extends JpaRepository<UserEntity, Long> {
     Optional<UserEntity> findByEmail(String email);
     boolean existsByEmail(String email);
 }
