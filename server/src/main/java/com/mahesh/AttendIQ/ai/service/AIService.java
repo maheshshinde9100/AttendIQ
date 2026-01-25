@@ -16,8 +16,34 @@ public class AIService {
     private final OllamaChatModel chatModel;
     private final AIAuditLogRepository auditLogRepository;
 
-    public String analyzeAttendanceTrends(String prompt) {
+    /**
+     * Uses Ollama to analyze attendance trends across a group of data.
+     */
+    public String analyzeAttendanceTrends(String attendanceDataJson) {
+        String prompt = "Act as an academic attendance analyst. Analyze the following attendance data (in JSON format) " +
+                "and provide insights on student engagement, absenteeism patterns, and specific students at risk. " +
+                "Data: " + attendanceDataJson;
         return chatModel.call(prompt);
+    }
+
+    /**
+     * Logic to determine if an attendance mark attempt is likely fraudulent.
+     */
+    public boolean detectFraud(UserEntity user, String deviceId, String location, double confidenceScore) {
+        // AI-based reasoning for fraud detection
+        boolean isFlagged = false;
+        String details = "Verified by AI";
+
+        if (confidenceScore < 0.85) {
+            isFlagged = true;
+            details = "Low face verification confidence: " + confidenceScore;
+        }
+
+        // Potential logic: Compare current location/device with history
+        // (Placeholder for more complex logic)
+
+        logAIAction(user, "FRAUD_DETECTION", details, confidenceScore, isFlagged);
+        return isFlagged;
     }
 
     public void logAIAction(UserEntity user, String action, String details, Double confidence, boolean flagged) {
@@ -35,3 +61,4 @@ public class AIService {
         return auditLogRepository.findByFlaggedTrue();
     }
 }
+

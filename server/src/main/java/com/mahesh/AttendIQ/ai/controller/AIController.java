@@ -16,13 +16,17 @@ import java.util.List;
 public class AIController {
 
     private final AIService aiService;
+    private final AttendanceService attendanceService;
 
-    @PostMapping("/analyze")
+    @GetMapping("/analyze-today")
     @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_TEACHER')")
-    public ResponseEntity<ApiResponse<String>> analyzeTrends(@RequestBody String prompt) {
-        String analysis = aiService.analyzeAttendanceTrends(prompt);
-        return ResponseEntity.ok(ApiResponse.success(analysis, "AI analysis completed"));
+    public ResponseEntity<ApiResponse<String>> analyzeTodayTrends() {
+        var todayData = attendanceService.getAllAttendanceForToday();
+        // Convert to summary or JSON for the AI
+        String analysis = aiService.analyzeAttendanceTrends(todayData.toString());
+        return ResponseEntity.ok(ApiResponse.success(analysis, "AI analysis of today's attendance completed"));
     }
+
 
     @GetMapping("/logs/flagged")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")

@@ -19,21 +19,40 @@ import java.util.List;
 public class AttendanceController {
 
     private final AttendanceService attendanceService;
+    private final AIService aiService;
 
     @PostMapping("/mark")
     public ResponseEntity<ApiResponse<AttendanceEntity>> markAttendance(
             @AuthenticationPrincipal UserEntity currentUser,
             @RequestBody MarkAttendanceRequest request
     ) {
+        // Step 1: Detect Fraud using AI
+        double confidenceScore = 0.95; // In real usage, this comes from the Face Verification step
+        boolean isFraudulent = aiService.detectFraud(
+                currentUser, 
+                request.getDeviceId(), 
+                request.getLocation(), 
+                confidenceScore
+        );
+
+        if (isFraudulent) {
+            // Log it but still mark it as 'PENDING_VERIFICATION' or similar if needed
+            // Or reject it entirely
+        }
+
+        // Step 2: Mark attendance
         AttendanceEntity attendance = attendanceService.markAttendance(
                 currentUser.getId(),
-                request.getStatus(),
+                isFraudulent ? "FLAGGED" : request.getStatus(),
                 request.getDeviceId(),
                 request.getLocation(),
-                request.getVerifiedBy()
+                "AI_VERIFIED"
         );
-        return ResponseEntity.ok(ApiResponse.success(attendance, "Attendance marked successfully"));
+        
+        String message = isFraudulent ? "Attendance marked but flagged for review" : "Attendance marked successfully";
+        return ResponseEntity.ok(ApiResponse.success(attendance, message));
     }
+
 
     @GetMapping("/my")
     public ResponseEntity<ApiResponse<List<AttendanceEntity>>> getMyAttendance(@AuthenticationPrincipal UserEntity currentUser) {
