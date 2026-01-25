@@ -34,8 +34,15 @@ public class FaceService {
     public Optional<FaceEmbeddingEntity> getEmbeddingByUserId(Long userId) {
         return faceEmbeddingRepository.findByUserId(userId);
     }
+
+    public double verifyFace(Long userId, double[] incomingEmbedding) {
+        return faceEmbeddingRepository.findByUserId(userId)
+                .map(stored -> calculateSimilarity(stored.getEmbedding(), incomingEmbedding))
+                .orElse(0.0);
+    }
     
     public double calculateSimilarity(double[] e1, double[] e2) {
+
         // Simple Cosine Similarity or Euclidean distance logic
         if (e1.length != e2.length) return 0.0;
         double dotProduct = 0.0;
