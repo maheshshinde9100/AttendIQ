@@ -2,6 +2,7 @@ package com.mahesh.attendiq.auth.service;
 
 import com.mahesh.attendiq.auth.dto.AuthenticationRequest;
 import com.mahesh.attendiq.auth.dto.AuthenticationResponse;
+import com.mahesh.attendiq.auth.dto.RefreshTokenRequest;
 import com.mahesh.attendiq.auth.dto.RegisterRequest;
 import com.mahesh.attendiq.auth.security.JwtService;
 import com.mahesh.attendiq.user.entity.UserEntity;
@@ -20,6 +21,7 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final RefreshTokenService refreshTokenService;
 
     public AuthenticationResponse register(RegisterRequest request) {
         var user = UserEntity.builder()
@@ -29,10 +31,13 @@ public class AuthenticationService {
                 .role(request.getRole())
                 .active(true)
                 .build();
-        repository.save(user);
+        var savedUser = repository.save(user);
         var jwtToken = jwtService.generateToken(user);
+        var refreshToken = refreshTokenService.createRefreshToken(savedUser.getId());
+        
         return AuthenticationResponse.builder()
                 .token(jwtToken)
+                .refreshToken(refreshToken.getToken())
                 .fullName(user.getFullName())
                 .role(user.getRole().name())
                 .build();
@@ -48,10 +53,31 @@ public class AuthenticationService {
         var user = repository.findByEmail(request.getEmail())
                 .orElseThrow();
         var jwtToken = jwtService.generateToken(user);
+        var refreshToken = refreshTokenService.createRefreshToken(user.getId());
+
         return AuthenticationResponse.builder()
                 .token(jwtToken)
+                .refreshToken(refreshToken.getToken())
                 .fullName(user.getFullName())
                 .role(user.getRole().name())
                 .build();
     }
+
+    public AuthenticationResponse refreshToken(RefreshTokenRequest request) {
+        return refreshTokenService.findByToken(request.getRefreshToken())
+                .map(refreshTokenService::verifyExpiration)
+                .map(token -> {
+                    var user = token.getUser();
+                    var jwtToken = jwtService.generateToken(user);
+                    return AuthenticationResponse.builder()
+                            .token(jwtToken)
+                            .refreshToken(token.getToken())
+                            .fullName(user.getFullName())
+                            .role(user.getRole().name())
+                            .build();
+                })
+                .orElseThrow(() -> new RuntimeException("Refresh token is not in database!"));
+    }
 }
+
+
