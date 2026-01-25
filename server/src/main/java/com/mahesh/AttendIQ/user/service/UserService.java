@@ -15,8 +15,7 @@ import java.util.List;
 public class UserService {
 
     private final UserRepository userRepository;
-    // PasswordEncoder will be injected once SecurityConfig is ready
-    // private final PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
 
     public UserEntity getUserByEmail(String email) {
         return userRepository.findByEmail(email)
@@ -33,9 +32,10 @@ public class UserService {
         if (userRepository.existsByEmail(user.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
-        // user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
+
 
     public List<UserEntity> getAllUsers() {
         return userRepository.findAll();
