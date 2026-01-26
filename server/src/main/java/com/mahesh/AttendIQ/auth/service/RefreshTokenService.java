@@ -28,15 +28,13 @@ public class RefreshTokenService {
 
     @Transactional
     public RefreshTokenEntity createRefreshToken(Long userId) {
-        RefreshTokenEntity refreshToken = RefreshTokenEntity.builder()
-                .user(userRepository.findById(userId).get())
-                .expiryDate(Instant.now().plusMillis(refreshTokenDurationMs))
-                .token(UUID.randomUUID().toString())
-                .build();
+        RefreshTokenEntity refreshToken = refreshTokenRepository.findByUserId(userId)
+                .orElse(new RefreshTokenEntity());
 
-        // Remove existing token if any
-        refreshTokenRepository.deleteByUserId(userId);
-        
+        refreshToken.setUser(userRepository.findById(userId).get());
+        refreshToken.setExpiryDate(Instant.now().plusMillis(refreshTokenDurationMs));
+        refreshToken.setToken(UUID.randomUUID().toString());
+
         return refreshTokenRepository.save(refreshToken);
     }
 
