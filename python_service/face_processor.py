@@ -1,65 +1,106 @@
 import cv2
 import numpy as np
-from insightface.app import FaceAnalysis
+import os
 import requests
-import json
+import urllib.request
 
 class FaceService:
-    def __init__(self, model_name='buffalo_l'):
+    def __init__(self):
         """
-        Initializes the InsightFace model. 
-        Note: The first time this runs, it will download the models (approx 200MB).
+        Initializes the Face Detection (YuNet) and Recognition (SFace) models.
+        These models are very small (~2MB) and require no C++ compiler to run.
         """
-        self.app = FaceAnalysis(name=model_name, providers=['CPUExecutionProvider'])
-        self.app.prepare(ctx_id=0, det_size=(640, 640))
-        print("InsightFace model loaded successfully.")
+        self.models_dir = os.path.join(os.path.dirname(__file__), "models")
+        if not os.path.exists(self.models_dir):
+            os.makedirs(self.models_dir)
 
-    def get_embedding(self, image_path):
-        """
-        Detects a face in the image and returns its embedding vector.
-        """
-        img = cv2.imread(image_path)
-        if img is None:
-            return None, "Image not found."
+        # Model Paths
+        self.detector_path = os.path.join(self.models_dir, "face_detection_yunet_2023mar.onnx")
+        self.recognizer_path = os.path.join(self.models_dir, "face_recognition_sface_2021dec.onnx")
 
-        faces = self.app.get(img)
-        if not faces:
-            return None, "No face detected in the image."
+        self._ensure_models_downloaded()
+
+        # Initialize OpenCV Models
+        # [640, 480] is the base resolution for webcam capture
+        self.detector = cv2.FaceDetectorYN.create(self.detector_path, "", (320, 320)) 
+        self.recognizer = cv2.FaceRecognizerSF.create(self.recognizer_path, "")
         
-        # We take the first face detected (assuming one person per registration/mark)
-        embedding = faces[0].embedding.tolist()
-        return embedding, None
+        print("ONNX Face Models loaded successfully.")
+
+    def _ensure_models_downloaded(self):
+        """Downloads the models from the OpenCV Model Zoo if they are missing."""
+        urls = {
+            self.detector_path: "https://github.com/opencv/opencv_zoo/raw/master/models/face_detection_yunet/face_detection_yunet_2023mar.onnx",
+            self.recognizer_path: "https://github.com/opencv/opencv_zoo/raw/master/models/face_recognition_sface/face_recognition_sface_2021dec.onnx"
+        }
+
+        for path, url in urls.items():
+            if not os.path.exists(path):
+                print(f"Downloading model: {os.path.basename(path)}...")
+                urllib.request.urlretrieve(url, path)
+
+    def get_embedding(self, frame):
+        """
+        Detects face in the frame, aligns it, and extracts the 128d embedding vector.
+        """
+        # Set dynamic input size based on frame
+        height, width, _ = frame.shape
+        self.detector.setInputSize((width, height))
+        
+        # 1. Detect
+        _, faces = self.detector.detect(frame)
+        if faces is None:
+            return None, "No face detected."
+
+        # 2. Align and Extract (Take only the first face)
+        face = faces[0]
+        aligned_face = self.recognizer.alignCrop(frame, face)
+        embedding = self.recognizer.feature(aligned_face)
+        
+        return embedding[0].tolist(), None
 
     def capture_and_extract(self):
         """
         Opens the webcam, captures a frame, and extracts the embedding.
         """
         cap = cv2.VideoCapture(0)
-        print("Camera opened. Press 's' to capture and save, or 'q' to quit.")
+        print("Camera opened. Press 's' to capture face, or 'q' to quit.")
         
         embedding = None
-        error = None
         
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
-                
-            # Draw instructions on frame
-            cv2.putText(frame, "Press 's' to capture face", (10, 30), 
+            
+            # Flip for mirror effect
+            frame = cv2.flip(frame, 1)
+            display_frame = frame.copy()
+            
+            # Real-time Detection for UI
+            self.detector.setInputSize((frame.shape[1], frame.shape[0]))
+            _, faces = self.detector.detect(frame)
+            
+            if faces is not None:
+                for face in faces:
+                    # Draw bounding box
+                    box = list(map(int, face[:4]))
+                    cv2.rectangle(display_frame, (box[0], box[1]), (box[0]+box[2], box[1]+box[3]), (0, 255, 0), 2)
+            
+            cv2.putText(display_frame, "Press 's' to capture", (10, 30), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
             
-            cv2.imshow('Face Capture', frame)
+            cv2.imshow('AttendIQ Face Capture', display_frame)
             
             key = cv2.waitKey(1)
             if key & 0xFF == ord('s'):
-                faces = self.app.get(frame)
-                if faces:
-                    embedding = faces[0].embedding.tolist()
-                    print("Face captured and embedding extracted.")
+                emb, err = self.get_embedding(frame)
+                if emb:
+                    embedding = emb
+                    print("Face captured successfully.")
                     break
                 else:
-                    print("No face detected, try again.")
+                    print(f"Capture failed: {err}")
             elif key & 0xFF == ord('q'):
                 break
         
@@ -68,7 +109,5 @@ class FaceService:
         return embedding
 
 if __name__ == "__main__":
-    # Test local extraction
     service = FaceService()
-    # embedding = service.capture_and_extract()
-    # print(embedding)
+    # service.capture_and_extract()

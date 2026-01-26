@@ -1,6 +1,6 @@
 opencv-python
 numpy
-insightface
 onnxruntime
+mediapipe
 requests
 python-dotenv
