@@ -1,40 +1,39 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { attendanceAPI } from '../services/api';
 import {
-    Camera,
     CheckCircle,
-    AlertCircle,
+    XCircle,
     Fingerprint,
     LogOut,
     Clock,
     Calendar,
     MapPin,
     Loader2,
-    XCircle
+    AlertCircle
 } from 'lucide-react';
 
 const StudentDashboard = () => {
     const { user, logout } = useAuth();
-    const videoRef = useRef(null);
-    const canvasRef = useRef(null);
-    const [stream, setStream] = useState(null);
-    const [cameraActive, setCameraActive] = useState(false);
-    const [capturing, setCapturing] = useState(false);
-    const [result, setResult] = useState(null);
     const [myAttendance, setMyAttendance] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [location, setLocation] = useState('Main Campus');
+    const [todayRecord, setTodayRecord] = useState(null);
 
     useEffect(() => {
         fetchMyAttendance();
-        return () => stopCamera();
     }, []);
 
     const fetchMyAttendance = async () => {
+        setLoading(true);
         try {
             const response = await attendanceAPI.getMyAttendance();
-            setMyAttendance(response.data.data || []);
+            const records = response.data.data || [];
+            setMyAttendance(records);
+
+            // Check if attendance marked today
+            const today = new Date().toDateString();
+            const todayAtt = records.find(att => new Date(att.attendanceDate).toDateString() === today);
+            setTodayRecord(todayAtt || null);
         } catch (error) {
             console.error('Error fetching attendance:', error);
         } finally {
@@ -42,83 +41,26 @@ const StudentDashboard = () => {
         }
     };
 
-    const startCamera = async () => {
-        try {
-            const mediaStream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: 640, height: 480 }
-            });
-            videoRef.current.srcObject = mediaStream;
-            setStream(mediaStream);
-            setCameraActive(true);
-            setResult(null);
-        } catch (error) {
-            setResult({ type: 'error', message: 'Unable to access camera. Please allow camera permissions.' });
-        }
+    const formatDate = (dateString) => {
+        return new Date(dateString).toLocaleDateString('en-US', {
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
     };
 
-    const stopCamera = () => {
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-            setStream(null);
-            setCameraActive(false);
-        }
+    const formatTime = (dateString) => {
+        return new Date(dateString).toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     };
 
-    const captureAndSubmit = async () => {
-        if (!videoRef.current || !canvasRef.current) return;
-
-        setCapturing(true);
-        setResult(null);
-
-        try {
-            const video = videoRef.current;
-            const canvas = canvasRef.current;
-            const ctx = canvas.getContext('2d');
-
-            // Set canvas size to match video
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-
-            // Flip horizontally for mirror effect
-            ctx.translate(canvas.width, 0);
-            ctx.scale(-1, 1);
-            ctx.drawImage(video, 0, 0);
-
-            // Convert to base64
-            const imageData = canvas.toDataURL('image/jpeg', 0.8);
-
-            // Send to backend
-            const response = await attendanceAPI.markAttendance({
-                status: 'PRESENT',
-                location: location,
-                deviceId: 'Web-Browser-' + navigator.userAgent.slice(0, 20),
-                faceImage: imageData // Backend will process this
-            });
-
-            if (response.data.success) {
-                setResult({
-                    type: 'success',
-                    message: response.data.message || 'Attendance marked successfully!'
-                });
-                stopCamera();
-                fetchMyAttendance();
-            } else {
-                setResult({ type: 'error', message: response.data.message });
-            }
-        } catch (error) {
-            const errorMsg = error.response?.data?.message || 'Failed to mark attendance. Please try again.';
-            setResult({ type: 'error', message: errorMsg });
-        } finally {
-            setCapturing(false);
-        }
-    };
-
-    const getTodayAttendance = () => {
-        const today = new Date().toDateString();
-        return myAttendance.find(att => new Date(att.attendanceDate).toDateString() === today);
-    };
-
-    const todayRecord = getTodayAttendance();
+    // Calculate attendance stats
+    const totalDays = myAttendance.length;
+    const presentDays = myAttendance.filter(a => a.status === 'PRESENT').length;
+    const attendanceRate = totalDays > 0 ? ((presentDays / totalDays) * 100).toFixed(1) : 0;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -150,10 +92,18 @@ const StudentDashboard = () => {
             </header>
 
             <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {/* Welcome Section */}
+                <div className="mb-8">
+                    <h1 className="text-2xl font-bold text-white mb-2">
+                        Welcome, {user?.fullName?.split(' ')[0]}! 👋
+                    </h1>
+                    <p className="text-slate-400">Here's your attendance summary</p>
+                </div>
+
                 {/* Today's Status Card */}
                 <div className={`rounded-2xl p-6 mb-8 border ${todayRecord
                         ? 'bg-green-500/10 border-green-500/30'
-                        : 'bg-violet-500/10 border-violet-500/30'
+                        : 'bg-amber-500/10 border-amber-500/30'
                     }`}>
                     <div className="flex items-center gap-4">
                         {todayRecord ? (
@@ -161,142 +111,65 @@ const StudentDashboard = () => {
                                 <div className="p-3 bg-green-500/20 rounded-xl">
                                     <CheckCircle className="w-8 h-8 text-green-400" />
                                 </div>
-                                <div>
-                                    <h2 className="text-xl font-bold text-white">Attendance Marked!</h2>
-                                    <p className="text-green-300">
-                                        Today at {new Date(todayRecord.attendanceDate).toLocaleTimeString()} • {todayRecord.location}
+                                <div className="flex-1">
+                                    <h2 className="text-xl font-bold text-white">Today's Attendance: Marked ✓</h2>
+                                    <p className="text-green-300 mt-1">
+                                        Recorded at {formatTime(todayRecord.attendanceDate)} • {todayRecord.location || 'Main Campus'}
+                                    </p>
+                                    <p className="text-slate-400 text-sm mt-1">
+                                        Verified by: {todayRecord.verifiedBy || 'System'}
                                     </p>
                                 </div>
                             </>
                         ) : (
                             <>
-                                <div className="p-3 bg-violet-500/20 rounded-xl">
-                                    <Calendar className="w-8 h-8 text-violet-400" />
+                                <div className="p-3 bg-amber-500/20 rounded-xl">
+                                    <AlertCircle className="w-8 h-8 text-amber-400" />
                                 </div>
-                                <div>
-                                    <h2 className="text-xl font-bold text-white">Mark Your Attendance</h2>
-                                    <p className="text-violet-300">Use the camera below to verify your identity</p>
+                                <div className="flex-1">
+                                    <h2 className="text-xl font-bold text-white">Today's Attendance: Not Marked</h2>
+                                    <p className="text-amber-300 mt-1">
+                                        Please use the attendance kiosk to mark your attendance
+                                    </p>
+                                    <a
+                                        href="/kiosk"
+                                        target="_blank"
+                                        className="inline-block mt-2 text-violet-400 hover:text-violet-300 text-sm font-medium"
+                                    >
+                                        Go to Attendance Kiosk →
+                                    </a>
                                 </div>
                             </>
                         )}
                     </div>
                 </div>
 
-                {/* Camera Section */}
-                {!todayRecord && (
-                    <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 overflow-hidden mb-8">
-                        <div className="p-6">
-                            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                                <Camera className="w-5 h-5" />
-                                Face Verification
-                            </h3>
-
-                            {/* Location Input */}
-                            <div className="mb-4">
-                                <label className="block text-sm text-slate-400 mb-2">Your Location</label>
-                                <div className="relative">
-                                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                                    <input
-                                        type="text"
-                                        value={location}
-                                        onChange={(e) => setLocation(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
-                                        placeholder="Enter your location"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Camera View */}
-                            <div className="relative aspect-video bg-slate-800 rounded-xl overflow-hidden mb-4">
-                                <video
-                                    ref={videoRef}
-                                    autoPlay
-                                    playsInline
-                                    muted
-                                    className={`w-full h-full object-cover transform scale-x-[-1] ${!cameraActive && 'hidden'}`}
-                                />
-                                <canvas ref={canvasRef} className="hidden" />
-
-                                {!cameraActive && (
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                        <Camera className="w-16 h-16 text-slate-600 mb-4" />
-                                        <p className="text-slate-400">Camera is off</p>
-                                        <p className="text-slate-500 text-sm">Click the button below to start</p>
-                                    </div>
-                                )}
-
-                                {capturing && (
-                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                        <div className="text-center">
-                                            <Loader2 className="w-12 h-12 text-violet-400 animate-spin mx-auto mb-3" />
-                                            <p className="text-white font-medium">Verifying face...</p>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Result Message */}
-                            {result && (
-                                <div className={`p-4 rounded-xl mb-4 flex items-center gap-3 ${result.type === 'success'
-                                        ? 'bg-green-500/20 border border-green-500/50'
-                                        : 'bg-red-500/20 border border-red-500/50'
-                                    }`}>
-                                    {result.type === 'success' ? (
-                                        <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
-                                    ) : (
-                                        <XCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-                                    )}
-                                    <p className={result.type === 'success' ? 'text-green-300' : 'text-red-300'}>
-                                        {result.message}
-                                    </p>
-                                </div>
-                            )}
-
-                            {/* Action Buttons */}
-                            <div className="flex gap-3">
-                                {!cameraActive ? (
-                                    <button
-                                        onClick={startCamera}
-                                        className="flex-1 py-3 px-4 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg shadow-purple-500/30 transition-all flex items-center justify-center gap-2"
-                                    >
-                                        <Camera size={20} />
-                                        Start Camera
-                                    </button>
-                                ) : (
-                                    <>
-                                        <button
-                                            onClick={stopCamera}
-                                            className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-medium rounded-xl transition"
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            onClick={captureAndSubmit}
-                                            disabled={capturing}
-                                            className="flex-1 py-3 px-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold rounded-xl shadow-lg shadow-green-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                                        >
-                                            {capturing ? (
-                                                <Loader2 className="w-5 h-5 animate-spin" />
-                                            ) : (
-                                                <CheckCircle size={20} />
-                                            )}
-                                            {capturing ? 'Processing...' : 'Mark Attendance'}
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-                        </div>
+                {/* Stats Row */}
+                <div className="grid grid-cols-3 gap-4 mb-8">
+                    <div className="bg-white/5 backdrop-blur-lg rounded-xl p-4 border border-white/10 text-center">
+                        <p className="text-3xl font-bold text-blue-400">{totalDays}</p>
+                        <p className="text-slate-400 text-sm mt-1">Total Records</p>
                     </div>
-                )}
+                    <div className="bg-white/5 backdrop-blur-lg rounded-xl p-4 border border-white/10 text-center">
+                        <p className="text-3xl font-bold text-green-400">{presentDays}</p>
+                        <p className="text-slate-400 text-sm mt-1">Days Present</p>
+                    </div>
+                    <div className="bg-white/5 backdrop-blur-lg rounded-xl p-4 border border-white/10 text-center">
+                        <p className="text-3xl font-bold text-purple-400">{attendanceRate}%</p>
+                        <p className="text-slate-400 text-sm mt-1">Attendance Rate</p>
+                    </div>
+                </div>
 
                 {/* Attendance History */}
                 <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 overflow-hidden">
-                    <div className="p-6">
-                        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                            <Clock className="w-5 h-5" />
+                    <div className="p-6 border-b border-white/10">
+                        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                            <Clock className="w-5 h-5 text-violet-400" />
                             Your Attendance History
                         </h3>
+                    </div>
 
+                    <div className="p-6">
                         {loading ? (
                             <div className="flex justify-center py-8">
                                 <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
@@ -305,12 +178,13 @@ const StudentDashboard = () => {
                             <div className="text-center py-8">
                                 <Calendar className="w-12 h-12 text-slate-600 mx-auto mb-3" />
                                 <p className="text-slate-400">No attendance records yet</p>
+                                <p className="text-slate-500 text-sm mt-1">Your records will appear here after marking attendance</p>
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {myAttendance.slice(0, 10).map((record, index) => (
+                                {myAttendance.slice(0, 15).map((record, index) => (
                                     <div
-                                        key={index}
+                                        key={record.id || index}
                                         className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition"
                                     >
                                         <div className="flex items-center gap-4">
@@ -319,22 +193,24 @@ const StudentDashboard = () => {
                                                 }`}>
                                                 {record.status === 'PRESENT' ? (
                                                     <CheckCircle className="w-5 h-5 text-green-400" />
+                                                ) : record.status === 'FLAGGED' ? (
+                                                    <XCircle className="w-5 h-5 text-red-400" />
                                                 ) : (
                                                     <AlertCircle className="w-5 h-5 text-amber-400" />
                                                 )}
                                             </div>
                                             <div>
-                                                <p className="text-white font-medium">
-                                                    {new Date(record.attendanceDate).toLocaleDateString('en-US', {
-                                                        weekday: 'long',
-                                                        year: 'numeric',
-                                                        month: 'short',
-                                                        day: 'numeric'
-                                                    })}
-                                                </p>
-                                                <p className="text-slate-400 text-sm">
-                                                    {new Date(record.attendanceDate).toLocaleTimeString()} • {record.location || 'N/A'}
-                                                </p>
+                                                <p className="text-white font-medium">{formatDate(record.attendanceDate)}</p>
+                                                <div className="flex items-center gap-3 text-slate-400 text-sm mt-1">
+                                                    <span className="flex items-center gap-1">
+                                                        <Clock className="w-3.5 h-3.5" />
+                                                        {formatTime(record.attendanceDate)}
+                                                    </span>
+                                                    <span className="flex items-center gap-1">
+                                                        <MapPin className="w-3.5 h-3.5" />
+                                                        {record.location || 'N/A'}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${record.status === 'PRESENT' ? 'bg-green-500/20 text-green-400' :

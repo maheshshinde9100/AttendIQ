@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
 import StudentDashboard from './pages/StudentDashboard';
+import AttendanceKiosk from './pages/AttendanceKiosk';
 import './index.css';
 
 // Role-based dashboard router
@@ -27,6 +28,7 @@ function App() {
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/kiosk" element={<AttendanceKiosk />} />
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
