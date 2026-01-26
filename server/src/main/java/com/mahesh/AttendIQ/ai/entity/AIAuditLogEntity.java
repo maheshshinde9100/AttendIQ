@@ -34,6 +34,7 @@ public class AIAuditLogEntity {
     @Column(name = "confidence_score")
     private Double confidenceScore;
 
+    @Builder.Default
     @Column(name = "is_flagged")
     private boolean flagged = false;
 

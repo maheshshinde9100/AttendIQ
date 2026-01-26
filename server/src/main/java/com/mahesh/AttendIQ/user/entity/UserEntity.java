@@ -38,9 +38,11 @@ public class UserEntity implements UserDetails {
     @Column(nullable = false)
     private UserRole role;
 
+    @Builder.Default
     @Column(nullable = false)
     private boolean active = true;
 
+    @Builder.Default
     @Column(name = "face_registered")
     private boolean faceRegistered = false;
 

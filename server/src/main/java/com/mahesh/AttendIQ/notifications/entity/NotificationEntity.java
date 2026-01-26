@@ -31,6 +31,7 @@ public class NotificationEntity {
     @Column(nullable = false)
     private String type; // SYSTEM, ATTENDANCE, SECURITY
 
+    @Builder.Default
     @Column(name = "is_read")
     private boolean read = false;
 
