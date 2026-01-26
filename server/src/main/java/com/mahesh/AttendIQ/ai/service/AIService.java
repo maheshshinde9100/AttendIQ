@@ -23,8 +23,15 @@ public class AIService {
         String prompt = "Act as an academic attendance analyst. Analyze the following attendance data (in JSON format) " +
                 "and provide insights on student engagement, absenteeism patterns, and specific students at risk. " +
                 "Data: " + attendanceDataJson;
-        return chatModel.call(prompt);
+        try {
+            return chatModel.call(prompt);
+        } catch (Exception e) {
+            return "Unable to perform AI Analysis: The AI model (Ollama) is currently unreachable. " +
+                   "Please ensure Ollama is running on your machine and the 'llama3' model is installed. " +
+                   "(Internal Error: " + e.getMessage() + ")";
+        }
     }
+
 
     /**
      * Logic to determine if an attendance mark attempt is likely fraudulent.

@@ -1,5 +1,6 @@
 package com.mahesh.attendiq.ai.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.mahesh.attendiq.user.entity.UserEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -15,7 +16,9 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class AIAuditLogEntity {
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
