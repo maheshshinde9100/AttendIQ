@@ -55,4 +55,52 @@ public class FaceService {
         }
         return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
     }
+
+    /**
+     * Find user by comparing face embedding with all registered users.
+     * Returns the best matching user if similarity is above threshold.
+     */
+    public Optional<UserEntity> findUserByFaceEmbedding(double[] incomingEmbedding) {
+        var allEmbeddings = faceEmbeddingRepository.findAll();
+        
+        UserEntity bestMatch = null;
+        double highestSimilarity = 0.0;
+        double threshold = 0.75; // Minimum similarity threshold
+        
+        for (FaceEmbeddingEntity stored : allEmbeddings) {
+            double similarity = calculateSimilarity(stored.getEmbedding(), incomingEmbedding);
+            if (similarity > highestSimilarity && similarity >= threshold) {
+                highestSimilarity = similarity;
+                bestMatch = stored.getUser();
+            }
+        }
+        
+        return Optional.ofNullable(bestMatch);
+    }
+    
+    /**
+     * Find user and return with confidence score
+     */
+    public FaceMatchResult findUserWithConfidence(double[] incomingEmbedding) {
+        var allEmbeddings = faceEmbeddingRepository.findAll();
+        
+        UserEntity bestMatch = null;
+        double highestSimilarity = 0.0;
+        double threshold = 0.75;
+        
+        for (FaceEmbeddingEntity stored : allEmbeddings) {
+            double similarity = calculateSimilarity(stored.getEmbedding(), incomingEmbedding);
+            if (similarity > highestSimilarity) {
+                highestSimilarity = similarity;
+                if (similarity >= threshold) {
+                    bestMatch = stored.getUser();
+                }
+            }
+        }
+        
+        return new FaceMatchResult(bestMatch, highestSimilarity);
+    }
+    
+    public record FaceMatchResult(UserEntity user, double confidence) {}
 }
+
