@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AttendIQ - Admin Testing Console</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --bg: #f9fafb;
+            --text: #111827;
+            --card: #ffffff;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .card { background: var(--card); padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h1, h2 { color: var(--primary); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+        .stat-card { background: #eef2ff; padding: 15px; border-radius: 8px; text-align: center; }
+        .stat-val { font-size: 24px; font-weight: bold; display: block; color: var(--primary); }
+        input, select, button { padding: 10px; margin: 5px 0; border: 1px solid #d1d5db; border-radius: 4px; width: 100%; box-sizing: border-box; }
+        button { background: var(--primary); color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { opacity: 0.9; }
+        #logArea { background: #1f2937; color: #10b981; padding: 15px; border-radius: 4px; font-family: monospace; white-space: pre-wrap; height: 300px; overflow-y: auto; }
+        .hidden { display: none; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        table, th, td { border: 1px solid #e5e7eb; }
+        th, td { padding: 10px; text-align: left; }
+        th { background: #f3f4f6; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>AttendIQ Test Console</h1>
+
+    <!-- 1. LOGIN FORM -->
+    <div id="loginSection" class="card">
+        <h2>Login</h2>
+        <input type="email" id="email" placeholder="Email" value="mahesh.admin@attendiq.com">
+        <input type="password" id="password" placeholder="Password" value="admin123">
+        <button onclick="login()">Login to System</button>
+    </div>
+
+    <!-- 2. ADMIN DASHBOARD (Hidden until login) -->
+    <div id="adminSection" class="hidden">
+        <div class="card">
+            <h2>Welcome, <span id="userNameDisplay">Admin</span>!</h2>
+            <button onclick="logout()" style="width: auto; background: #ef4444;">Logout</button>
+        </div>
+
+        <div class="grid card">
+            <div class="stat-card">
+                <span class="stat-val" id="stat-students">0</span>
+                Total Users
+            </div>
+            <div class="stat-card">
+                <span class="stat-val" id="stat-present">0</span>
+                Present Today
+            </div>
+            <div class="stat-card">
+                <span class="stat-val" id="stat-flagged">0</span>
+                Flagged Fraud
+            </div>
+            <div class="stat-card">
+                <span class="stat-val" id="stat-rate">0%</span>
+                Attendance Rate
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Quick Actions</h2>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="fetchStats()">Refresh Dashboard</button>
+                <button onclick="fetchTodayAttendance()">View Today's Attendance</button>
+                <button onclick="runAITrends()" style="background: #8b5cf6;">Run AI Analysis</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>System Logs / Results</h2>
+            <div id="logArea">Waiting for action...</div>
+        </div>
+
+        <div class="card hidden" id="tableCard">
+            <h2>Attendance Report</h2>
+            <div id="tableContainer"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const BASE_URL = 'http://localhost:8080/api/v1';
+    let TOKEN = localStorage.getItem('attendiq_token') || '';
+
+    // Switch view if token exists
+    if (TOKEN) {
+        showAdmin();
+    }
+
+    async function login() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        try {
+            const resp = await fetch(`${BASE_URL}/auth/authenticate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await resp.json();
+            if (resp.ok) {
+                TOKEN = data.token;
+                localStorage.setItem('attendiq_token', TOKEN);
+                document.getElementById('userNameDisplay').innerText = data.fullName;
+                showAdmin();
+                fetchStats();
+            } else {
+                alert("Login Failed: " + (data.message || "Unknown error"));
+            }
+        } catch (e) {
+            alert("Error: Server might be offline.");
+        }
+    }
+
+    function showAdmin() {
+        document.getElementById('loginSection').classList.add('hidden');
+        document.getElementById('adminSection').classList.remove('hidden');
+        log("Authenticated session restored.");
+    }
+
+    function logout() {
+        localStorage.removeItem('attendiq_token');
+        location.reload();
+    }
+
+    function log(msg) {
+        const area = document.getElementById('logArea');
+        area.innerText = typeof msg === 'string' ? msg : JSON.stringify(msg, null, 2);
+    }
+
+    async function fetchStats() {
+        try {
+            const resp = await fetch(`${BASE_URL}/dashboard/stats`, {
+                headers: { 'Authorization': `Bearer ${TOKEN}` }
+            });
+            const res = await resp.json();
+            if (res.success) {
+                const s = res.data;
+                document.getElementById('stat-students').innerText = s.totalStudents;
+                document.getElementById('stat-present').innerText = s.presentToday;
+                document.getElementById('stat-flagged').innerText = s.flaggedAttempts;
+                document.getElementById('stat-rate').innerText = s.overallAttendanceRate.toFixed(1) + '%';
+                log("Dashboard updated: " + new Date().toLocaleTimeString());
+            }
+        } catch (e) { log("Error fetching stats: " + e); }
+    }
+
+    async function fetchTodayAttendance() {
+        try {
+            const resp = await fetch(`${BASE_URL}/attendance/today`, {
+                headers: { 'Authorization': `Bearer ${TOKEN}` }
+            });
+            const res = await resp.json();
+            if (res.success) {
+                log(res.message);
+                renderTable(res.data);
+            }
+        } catch (e) { log("Error: " + e); }
+    }
+
+    async function runAITrends() {
+        log("Calling Ollama for analysis... Please wait (this may take a few seconds)");
+        try {
+            const resp = await fetch(`${BASE_URL}/ai/analyze-today`, {
+                headers: { 'Authorization': `Bearer ${TOKEN}` }
+            });
+            const res = await resp.json();
+            if (res.success) {
+                log("--- AI ANALYTICS REPORT ---\n\n" + res.data);
+            } else {
+                log("AI Error: " + res.message);
+            }
+        } catch (e) { log("AI Service error: " + e); }
+    }
+
+    function renderTable(data) {
+        const cont = document.getElementById('tableContainer');
+        document.getElementById('tableCard').classList.remove('hidden');
+        
+        if (data.length === 0) {
+            cont.innerHTML = "<p>No attendance records for today yet.</p>";
+            return;
+        }
+
+        let html = `<table><thead><tr><th>User</th><th>Status</th><th>Time</th><th>Method</th><th>Location</th></tr></thead><tbody>`;
+        data.forEach(row => {
+            html += `<tr>
+                <td>${row.user.fullName}</td>
+                <td>${row.status}</td>
+                <td>${new Date(row.attendanceDate).toLocaleTimeString()}</td>
+                <td>${row.verifiedBy}</td>
+                <td>${row.location}</td>
+            </tr>`;
+        });
+        html += `</tbody></table>`;
+        cont.innerHTML = html;
+    }
+</script>
+</body>
+</html>
