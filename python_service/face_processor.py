@@ -30,14 +30,22 @@ class FaceService:
     def _ensure_models_downloaded(self):
         """Downloads the models from the OpenCV Model Zoo if they are missing."""
         urls = {
-            self.detector_path: "https://github.com/opencv/opencv_zoo/raw/master/models/face_detection_yunet/face_detection_yunet_2023mar.onnx",
-            self.recognizer_path: "https://github.com/opencv/opencv_zoo/raw/master/models/face_recognition_sface/face_recognition_sface_2021dec.onnx"
+            self.detector_path: "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx",
+            self.recognizer_path: "https://github.com/opencv/opencv_zoo/raw/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx"
         }
 
+        # Some networks/GitHub configs block simple urllib, so we use a Request with a User-Agent
         for path, url in urls.items():
             if not os.path.exists(path):
                 print(f"Downloading model: {os.path.basename(path)}...")
-                urllib.request.urlretrieve(url, path)
+                try:
+                    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                    with urllib.request.urlopen(req) as response, open(path, 'wb') as out_file:
+                        out_file.write(response.read())
+                    print(f"Successfully downloaded {os.path.basename(path)}")
+                except Exception as e:
+                    print(f"Failed to download {os.path.basename(path)}: {e}")
+                    print("Please download the models manually and place them in the 'models' folder.")
 
     def get_embedding(self, frame):
         """

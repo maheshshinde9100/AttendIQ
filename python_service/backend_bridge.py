@@ -16,7 +16,7 @@ class BackendBridge:
         try:
             response = requests.post(url, json=payload)
             if response.status_code == 200:
-                self.token = response.json().get("data", {}).get("token")
+                self.token = response.json().get("token")
                 print("Logged in successfully.")
                 return True
             else:
