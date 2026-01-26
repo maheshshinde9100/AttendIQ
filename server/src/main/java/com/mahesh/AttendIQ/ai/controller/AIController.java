@@ -2,7 +2,9 @@ package com.mahesh.attendiq.ai.controller;
 
 import com.mahesh.attendiq.ai.entity.AIAuditLogEntity;
 import com.mahesh.attendiq.ai.service.AIService;
+import com.mahesh.attendiq.attendance.service.AttendanceService;
 import com.mahesh.attendiq.common.util.ApiResponse;
+import com.mahesh.attendiq.face.service.FaceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;

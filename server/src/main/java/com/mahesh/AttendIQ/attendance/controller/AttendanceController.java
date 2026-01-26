@@ -3,6 +3,8 @@ package com.mahesh.attendiq.attendance.controller;
 import com.mahesh.attendiq.attendance.dto.MarkAttendanceRequest;
 import com.mahesh.attendiq.attendance.entity.AttendanceEntity;
 import com.mahesh.attendiq.attendance.service.AttendanceService;
+import com.mahesh.attendiq.ai.service.AIService;
+import com.mahesh.attendiq.face.service.FaceService;
 import com.mahesh.attendiq.common.util.ApiResponse;
 import com.mahesh.attendiq.user.entity.UserEntity;
 import lombok.RequiredArgsConstructor;
