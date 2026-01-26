@@ -1,5 +1,6 @@
 package com.mahesh.attendiq.face.entity;
 
+import com.mahesh.attendiq.user.entity.UserEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

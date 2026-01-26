@@ -2,6 +2,7 @@ package com.mahesh.attendiq.auth.controller;
 
 import com.mahesh.attendiq.auth.dto.AuthenticationRequest;
 import com.mahesh.attendiq.auth.dto.AuthenticationResponse;
+import com.mahesh.attendiq.auth.dto.RefreshTokenRequest;
 import com.mahesh.attendiq.auth.dto.RegisterRequest;
 import com.mahesh.attendiq.auth.service.AuthenticationService;
 import jakarta.validation.Valid;
