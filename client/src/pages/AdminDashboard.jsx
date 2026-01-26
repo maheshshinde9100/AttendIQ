@@ -18,13 +18,15 @@ import {
     Filter,
     Search,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    ShieldAlert
 } from 'lucide-react';
 
 const AdminDashboard = () => {
     const { user, logout } = useAuth();
     const [stats, setStats] = useState(null);
     const [todayAttendance, setTodayAttendance] = useState([]);
+    const [flaggedLogs, setFlaggedLogs] = useState([]);
     const [allUsers, setAllUsers] = useState([]);
     const [aiAnalysis, setAiAnalysis] = useState('');
     const [loading, setLoading] = useState(true);
@@ -42,14 +44,16 @@ const AdminDashboard = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [statsRes, attendanceRes, usersRes] = await Promise.all([
+            const [statsRes, attendanceRes, usersRes, flaggedRes] = await Promise.all([
                 dashboardAPI.getStats(),
                 attendanceAPI.getTodayAttendance(),
-                userAPI.getAllUsers().catch(() => ({ data: { data: [] } }))
+                userAPI.getAllUsers().catch(() => ({ data: { data: [] } })),
+                aiAPI.getFlaggedLogs().catch(() => ({ data: { data: [] } }))
             ]);
             setStats(statsRes.data.data);
             setTodayAttendance(attendanceRes.data.data || []);
             setAllUsers(usersRes.data.data || []);
+            setFlaggedLogs(flaggedRes.data.data || []);
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
         } finally {
@@ -196,6 +200,7 @@ const AdminDashboard = () => {
                 <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
                     {[
                         { id: 'overview', label: 'Today\'s Attendance', icon: Calendar },
+                        { id: 'flagged', label: 'Flagged Attempts', icon: ShieldAlert },
                         { id: 'users', label: 'All Users', icon: Users },
                         { id: 'ai-insights', label: 'AI Insights', icon: Brain }
                     ].map((tab) => (
@@ -203,8 +208,8 @@ const AdminDashboard = () => {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`px-4 py-2 rounded-xl font-medium transition whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id
-                                    ? 'bg-violet-600 text-white'
-                                    : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                                ? 'bg-violet-600 text-white'
+                                : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
                                 }`}
                         >
                             <tab.icon className="w-4 h-4" />
@@ -284,10 +289,10 @@ const AdminDashboard = () => {
                                                         <td className="py-4 px-4 text-slate-400">{record.user?.email || 'N/A'}</td>
                                                         <td className="py-4 px-4">
                                                             <span className={`px-3 py-1 rounded-full text-xs font-medium ${record.status === 'PRESENT'
-                                                                    ? 'bg-green-500/20 text-green-400'
-                                                                    : record.status === 'FLAGGED'
-                                                                        ? 'bg-red-500/20 text-red-400'
-                                                                        : 'bg-amber-500/20 text-amber-400'
+                                                                ? 'bg-green-500/20 text-green-400'
+                                                                : record.status === 'FLAGGED'
+                                                                    ? 'bg-red-500/20 text-red-400'
+                                                                    : 'bg-amber-500/20 text-amber-400'
                                                                 }`}>
                                                                 {record.status}
                                                             </span>
@@ -300,8 +305,8 @@ const AdminDashboard = () => {
                                                         </td>
                                                         <td className="py-4 px-4">
                                                             <span className={`px-2 py-1 rounded-lg text-xs ${record.verifiedBy?.includes('AI')
-                                                                    ? 'bg-violet-500/20 text-violet-300'
-                                                                    : 'bg-slate-500/20 text-slate-300'
+                                                                ? 'bg-violet-500/20 text-violet-300'
+                                                                : 'bg-slate-500/20 text-slate-300'
                                                                 }`}>
                                                                 {record.verifiedBy || 'Manual'}
                                                             </span>
@@ -347,6 +352,56 @@ const AdminDashboard = () => {
                         </div>
                     )}
 
+                    {activeTab === 'flagged' && (
+                        <div className="p-6">
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-xl font-semibold text-white">AI Flagged Attempts</h2>
+                                <button
+                                    onClick={fetchData}
+                                    className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition"
+                                >
+                                    <RefreshCw size={16} />
+                                </button>
+                            </div>
+
+                            {flaggedLogs.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <ShieldAlert className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+                                    <p className="text-slate-400">No flagged attempts found.</p>
+                                    <p className="text-slate-500 text-sm mt-1">AI will flag suspicious activity here.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {flaggedLogs.map((log, index) => (
+                                        <div key={index} className="bg-red-500/5 border border-red-500/20 rounded-xl p-4 flex items-start justify-between">
+                                            <div className="flex gap-4">
+                                                <div className="w-10 h-10 bg-red-500/20 rounded-full flex items-center justify-center text-red-400">
+                                                    <AlertTriangle size={20} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-white font-medium">{log.user?.fullName || 'Unknown User'}</p>
+                                                    <p className="text-slate-400 text-sm">{log.details}</p>
+                                                    <div className="flex items-center gap-3 mt-2 text-xs">
+                                                        <span className="text-slate-500 flex items-center gap-1">
+                                                            <Clock size={12} />
+                                                            {new Date(log.createdAt).toLocaleString()}
+                                                        </span>
+                                                        <span className="text-red-400 font-medium">
+                                                            Confidence: {(log.confidenceScore * 100).toFixed(1)}%
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button className="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold rounded-lg border border-red-500/30 transition">
+                                                Review
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {activeTab === 'users' && (
                         <div className="p-6">
                             <h2 className="text-xl font-semibold text-white mb-6">Registered Users</h2>
@@ -370,8 +425,8 @@ const AdminDashboard = () => {
                                             </div>
                                             <div className="flex items-center justify-between">
                                                 <span className={`px-2 py-1 rounded-lg text-xs ${u.role === 'ROLE_ADMIN' ? 'bg-red-500/20 text-red-300' :
-                                                        u.role === 'ROLE_TEACHER' ? 'bg-blue-500/20 text-blue-300' :
-                                                            'bg-green-500/20 text-green-300'
+                                                    u.role === 'ROLE_TEACHER' ? 'bg-blue-500/20 text-blue-300' :
+                                                        'bg-green-500/20 text-green-300'
                                                     }`}>
                                                     {u.role?.replace('ROLE_', '')}
                                                 </span>

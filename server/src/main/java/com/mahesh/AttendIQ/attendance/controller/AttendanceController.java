@@ -22,7 +22,8 @@ public class AttendanceController {
 
     private final AttendanceService attendanceService;
     private final AIService aiService;
-    private final FaceService faceService; // Added FaceService
+    private final FaceService faceService;
+    private final com.mahesh.attendiq.face.service.PythonFaceServiceClient pythonFaceServiceClient;
 
     @PostMapping("/mark")
     public ResponseEntity<ApiResponse<AttendanceEntity>> markAttendance(
@@ -78,38 +79,31 @@ public class AttendanceController {
 
     /**
      * Public endpoint for kiosk-based attendance (no authentication required).
-     * The face image is processed to extract embedding and matched against stored embeddings.
-     * 
-     * NOTE: In a production environment, you would call a Python microservice 
-     * to extract the face embedding from the image. For now, we simulate this.
      */
     @PostMapping("/public/mark")
     public ResponseEntity<ApiResponse<com.mahesh.attendiq.attendance.dto.PublicAttendanceResponse>> markPublicAttendance(
             @RequestBody com.mahesh.attendiq.attendance.dto.PublicAttendanceRequest request
     ) {
         try {
-            // In production: Call Python microservice to extract face embedding from request.getFaceImage()
-            // For now, we return an error message instructing to use the Python client
+            // 1. Extract embedding from image using Python service
+            double[] extractedEmbedding = pythonFaceServiceClient.extractEmbedding(request.getFaceImage());
             
-            // Placeholder: This would be the embedding extracted from the image
-            // double[] extractedEmbedding = pythonFaceService.extractEmbedding(request.getFaceImage());
+            if (extractedEmbedding == null) {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error("Invalid face data. Please look clearly into the camera.")
+                );
+            }
             
-            // Since we can't extract embedding from image in Java easily,
-            // we'll return a message directing users to the Python client
-            return ResponseEntity.badRequest().body(
-                ApiResponse.error("Face recognition from browser is not yet supported. Please use the Python client for biometric attendance, or contact your administrator to register your face first.")
-            );
-            
-            /* Production implementation would be:
+            // 2. Find matching user from DB
             var matchResult = faceService.findUserWithConfidence(extractedEmbedding);
             
             if (matchResult.user() == null) {
                 return ResponseEntity.badRequest().body(
-                    ApiResponse.error("Face not recognized. Please ensure you have registered your face.")
+                    ApiResponse.error("Face not recognized. Please ensure you have registered your face using the mobile client.")
                 );
             }
             
-            // Check if already marked today
+            // 3. Check if already marked today
             var todayRecords = attendanceService.getUserAttendance(matchResult.user().getId());
             var today = java.time.LocalDate.now();
             boolean alreadyMarked = todayRecords.stream()
@@ -117,12 +111,12 @@ public class AttendanceController {
             
             if (alreadyMarked) {
                 return ResponseEntity.ok(ApiResponse.success(
-                    PublicAttendanceResponse.fromUser(matchResult.user(), null, "ALREADY_MARKED", java.time.LocalDateTime.now(), request.getLocation(), "SYSTEM"),
-                    "Attendance already marked for today"
+                    com.mahesh.attendiq.attendance.dto.PublicAttendanceResponse.fromUser(matchResult.user(), null, "ALREADY_MARKED", java.time.LocalDateTime.now(), request.getLocation(), "SYSTEM"),
+                    "Attendance already marked for today!"
                 ));
             }
             
-            // Mark attendance
+            // 4. Mark attendance
             AttendanceEntity attendance = attendanceService.markAttendance(
                 matchResult.user().getId(),
                 matchResult.confidence() >= 0.85 ? "PRESENT" : "FLAGGED",
@@ -132,14 +126,13 @@ public class AttendanceController {
             );
             
             return ResponseEntity.ok(ApiResponse.success(
-                PublicAttendanceResponse.fromUser(matchResult.user(), attendance.getId(), attendance.getStatus(), attendance.getAttendanceDate(), attendance.getLocation(), attendance.getVerifiedBy()),
-                "Attendance marked successfully! Confidence: " + String.format("%.1f%%", matchResult.confidence() * 100)
+                com.mahesh.attendiq.attendance.dto.PublicAttendanceResponse.fromUser(matchResult.user(), attendance.getId(), attendance.getStatus(), attendance.getAttendanceDate(), attendance.getLocation(), attendance.getVerifiedBy()),
+                "Attendance marked successfully! (Match: " + String.format("%.1f%%", matchResult.confidence() * 100) + ")"
             ));
-            */
             
         } catch (Exception e) {
             return ResponseEntity.status(500).body(
-                ApiResponse.error("Error processing attendance: " + e.getMessage())
+                ApiResponse.error("Server Error: " + e.getMessage())
             );
         }
     }
