@@ -6,6 +6,8 @@ import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import AttendanceKiosk from './pages/AttendanceKiosk';
+import LandingPage from './pages/LandingPage';
+import Profile from './pages/Profile';
 import './index.css';
 
 // Role-based dashboard router
@@ -26,6 +28,7 @@ function App() {
       <Router>
         <Routes>
           {/* Public Routes */}
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/kiosk" element={<AttendanceKiosk />} />
@@ -33,15 +36,16 @@ function App() {
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<DashboardRouter />} />
+            <Route path="/profile" element={<Profile />} />
           </Route>
 
           {/* Default Redirect */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
     </AuthProvider>
   );
 }
+
 
 export default App;
