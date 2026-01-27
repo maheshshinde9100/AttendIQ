@@ -1,20 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { attendanceAPI } from '../services/api';
+import DashboardLayout from '../components/DashboardLayout';
 import {
     CheckCircle,
     XCircle,
-    Fingerprint,
-    LogOut,
     Clock,
     Calendar,
     MapPin,
     Loader2,
-    AlertCircle
+    AlertCircle,
+    ExternalLink,
+    PieChart,
+    ChevronRight,
+    Search
 } from 'lucide-react';
 
 const StudentDashboard = () => {
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
     const [myAttendance, setMyAttendance] = useState([]);
     const [loading, setLoading] = useState(true);
     const [todayRecord, setTodayRecord] = useState(null);
@@ -30,7 +33,6 @@ const StudentDashboard = () => {
             const records = response.data.data || [];
             setMyAttendance(records);
 
-            // Check if attendance marked today
             const today = new Date().toDateString();
             const todayAtt = records.find(att => new Date(att.attendanceDate).toDateString() === today);
             setTodayRecord(todayAtt || null);
@@ -51,181 +53,167 @@ const StudentDashboard = () => {
     };
 
     const formatTime = (dateString) => {
-        return new Date(dateString).toLocaleTimeString('en-US', {
+        return new Date(dateString).toLocaleTimeString([], {
             hour: '2-digit',
             minute: '2-digit'
         });
     };
 
-    // Calculate attendance stats
     const totalDays = myAttendance.length;
     const presentDays = myAttendance.filter(a => a.status === 'PRESENT').length;
     const attendanceRate = totalDays > 0 ? ((presentDays / totalDays) * 100).toFixed(1) : 0;
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-            {/* Header */}
-            <header className="bg-white/5 backdrop-blur-lg border-b border-white/10 sticky top-0 z-50">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between h-16">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-gradient-to-r from-violet-500 to-purple-600 rounded-xl">
-                                <Fingerprint className="w-6 h-6 text-white" />
-                            </div>
-                            <span className="text-xl font-bold text-white">AttendIQ</span>
-                        </div>
-
-                        <div className="flex items-center gap-4">
-                            <div className="text-right hidden sm:block">
-                                <p className="text-white font-medium">{user?.fullName}</p>
-                                <p className="text-slate-400 text-sm">Student</p>
-                            </div>
-                            <button
-                                onClick={logout}
-                                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition"
-                            >
-                                <LogOut size={20} />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Welcome Section */}
-                <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-white mb-2">
-                        Welcome, {user?.fullName?.split(' ')[0]}! 👋
-                    </h1>
-                    <p className="text-slate-400">Here's your attendance summary</p>
+        <DashboardLayout>
+            <div className="space-y-8 max-w-5xl mx-auto">
+                {/* Header Section */}
+                <div>
+                    <h1 className="text-3xl font-bold text-white mb-2">Student Portal</h1>
+                    <p className="text-slate-400">Manage your attendance and academic performance.</p>
                 </div>
 
-                {/* Today's Status Card */}
-                <div className={`rounded-2xl p-6 mb-8 border ${todayRecord
-                        ? 'bg-green-500/10 border-green-500/30'
-                        : 'bg-amber-500/10 border-amber-500/30'
+                {/* Today's Alert Section */}
+                <div className={`relative overflow-hidden rounded-3xl p-8 border ${todayRecord
+                    ? 'bg-emerald-500/10 border-emerald-500/20'
+                    : 'bg-amber-500/10 border-amber-500/20'
                     }`}>
-                    <div className="flex items-center gap-4">
-                        {todayRecord ? (
-                            <>
-                                <div className="p-3 bg-green-500/20 rounded-xl">
-                                    <CheckCircle className="w-8 h-8 text-green-400" />
-                                </div>
-                                <div className="flex-1">
-                                    <h2 className="text-xl font-bold text-white">Today's Attendance: Marked ✓</h2>
-                                    <p className="text-green-300 mt-1">
-                                        Recorded at {formatTime(todayRecord.attendanceDate)} • {todayRecord.location || 'Main Campus'}
-                                    </p>
-                                    <p className="text-slate-400 text-sm mt-1">
-                                        Verified by: {todayRecord.verifiedBy || 'System'}
-                                    </p>
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                <div className="p-3 bg-amber-500/20 rounded-xl">
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="flex items-start gap-5">
+                            <div className={`p-4 rounded-2xl ${todayRecord ? 'bg-emerald-500/20' : 'bg-amber-500/20'}`}>
+                                {todayRecord ? (
+                                    <CheckCircle className="w-8 h-8 text-emerald-400" />
+                                ) : (
                                     <AlertCircle className="w-8 h-8 text-amber-400" />
-                                </div>
-                                <div className="flex-1">
-                                    <h2 className="text-xl font-bold text-white">Today's Attendance: Not Marked</h2>
-                                    <p className="text-amber-300 mt-1">
-                                        Please use the attendance kiosk to mark your attendance
-                                    </p>
-                                    <a
-                                        href="/kiosk"
-                                        target="_blank"
-                                        className="inline-block mt-2 text-violet-400 hover:text-violet-300 text-sm font-medium"
-                                    >
-                                        Go to Attendance Kiosk →
-                                    </a>
-                                </div>
-                            </>
+                                )}
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-white">
+                                    {todayRecord ? "Attendance Confirmed" : "Action Required"}
+                                </h2>
+                                <p className={`mt-1 text-sm ${todayRecord ? 'text-emerald-300/80' : 'text-amber-300/80'}`}>
+                                    {todayRecord
+                                        ? `Verified at ${formatTime(todayRecord.attendanceDate)} via ${todayRecord.verifiedBy?.replace('AI_', '') || 'Kiosk'}`
+                                        : "You haven't marked your attendance for today yet."}
+                                </p>
+                            </div>
+                        </div>
+
+                        {!todayRecord && (
+                            <a
+                                href="/kiosk"
+                                target="_blank"
+                                className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 text-black font-bold rounded-xl hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20"
+                            >
+                                Open Kiosk Mode
+                                <ExternalLink size={18} />
+                            </a>
                         )}
                     </div>
                 </div>
 
-                {/* Stats Row */}
-                <div className="grid grid-cols-3 gap-4 mb-8">
-                    <div className="bg-white/5 backdrop-blur-lg rounded-xl p-4 border border-white/10 text-center">
-                        <p className="text-3xl font-bold text-blue-400">{totalDays}</p>
-                        <p className="text-slate-400 text-sm mt-1">Total Records</p>
+                {/* Performance Stats */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    <div className="bg-[#1e293b]/50 backdrop-blur-xl rounded-2xl p-6 border border-white/5 group">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-2 bg-blue-500/10 rounded-lg">
+                                <Calendar className="w-5 h-5 text-blue-400" />
+                            </div>
+                            <span className="text-xs font-bold text-blue-400/50 uppercase tracking-wider text-right">Records</span>
+                        </div>
+                        <p className="text-4xl font-bold text-white">{totalDays}</p>
+                        <p className="text-slate-500 text-xs mt-1">Total academic days</p>
                     </div>
-                    <div className="bg-white/5 backdrop-blur-lg rounded-xl p-4 border border-white/10 text-center">
-                        <p className="text-3xl font-bold text-green-400">{presentDays}</p>
-                        <p className="text-slate-400 text-sm mt-1">Days Present</p>
+
+                    <div className="bg-[#1e293b]/50 backdrop-blur-xl rounded-2xl p-6 border border-white/5 group">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-2 bg-emerald-500/10 rounded-lg">
+                                <CheckCircle className="w-5 h-5 text-emerald-400" />
+                            </div>
+                            <span className="text-xs font-bold text-emerald-400/50 uppercase tracking-wider text-right">Presence</span>
+                        </div>
+                        <p className="text-4xl font-bold text-white">{presentDays}</p>
+                        <p className="text-slate-500 text-xs mt-1">Successful mark-ins</p>
                     </div>
-                    <div className="bg-white/5 backdrop-blur-lg rounded-xl p-4 border border-white/10 text-center">
-                        <p className="text-3xl font-bold text-purple-400">{attendanceRate}%</p>
-                        <p className="text-slate-400 text-sm mt-1">Attendance Rate</p>
+
+                    <div className="bg-[#1e293b]/50 backdrop-blur-xl rounded-2xl p-6 border border-white/5 group">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-2 bg-violet-500/10 rounded-lg">
+                                <PieChart className="w-5 h-5 text-violet-400" />
+                            </div>
+                            <span className="text-xs font-bold text-violet-400/50 uppercase tracking-wider text-right">Standard</span>
+                        </div>
+                        <p className="text-4xl font-bold text-white">{attendanceRate}%</p>
+                        <p className="text-slate-500 text-xs mt-1">Academic average</p>
                     </div>
                 </div>
 
-                {/* Attendance History */}
-                <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 overflow-hidden">
-                    <div className="p-6 border-b border-white/10">
-                        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                            <Clock className="w-5 h-5 text-violet-400" />
-                            Your Attendance History
+                {/* History Section */}
+                <div className="bg-[#1e293b]/30 backdrop-blur-xl rounded-3xl border border-white/5 overflow-hidden">
+                    <div className="p-8 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                            <Clock className="w-6 h-6 text-violet-500" />
+                            Attendance History
                         </h3>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                            <input
+                                type="text"
+                                placeholder="Search history..."
+                                className="pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-violet-500 transition-all outline-none"
+                            />
+                        </div>
                     </div>
 
-                    <div className="p-6">
+                    <div className="p-4 sm:p-8">
                         {loading ? (
-                            <div className="flex justify-center py-8">
-                                <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
+                            <div className="flex flex-col items-center justify-center py-20 gap-4">
+                                <Loader2 className="w-12 h-12 text-violet-500 animate-spin" />
+                                <p className="text-slate-500 font-medium">Synchronizing records...</p>
                             </div>
                         ) : myAttendance.length === 0 ? (
-                            <div className="text-center py-8">
-                                <Calendar className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-                                <p className="text-slate-400">No attendance records yet</p>
-                                <p className="text-slate-500 text-sm mt-1">Your records will appear here after marking attendance</p>
+                            <div className="text-center py-20 bg-white/5 rounded-2xl border border-white/5 border-dashed">
+                                <Calendar className="w-16 h-16 text-slate-800 mx-auto mb-4" />
+                                <p className="text-slate-400 font-medium">No records found</p>
+                                <p className="text-slate-600 text-sm mt-1">Your attendance will appear here once you mark it.</p>
                             </div>
                         ) : (
-                            <div className="space-y-3">
-                                {myAttendance.slice(0, 15).map((record, index) => (
+                            <div className="grid gap-3">
+                                {myAttendance.map((record, index) => (
                                     <div
                                         key={record.id || index}
-                                        className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition"
+                                        className="group flex items-center justify-between p-5 bg-[#1e293b]/40 rounded-2xl border border-white/5 hover:border-violet-500/30 transition-all"
                                     >
-                                        <div className="flex items-center gap-4">
-                                            <div className={`p-2 rounded-lg ${record.status === 'PRESENT' ? 'bg-green-500/20' :
-                                                    record.status === 'FLAGGED' ? 'bg-red-500/20' : 'bg-amber-500/20'
+                                        <div className="flex items-center gap-5">
+                                            <div className={`p-3 rounded-xl ${record.status === 'PRESENT' ? 'bg-emerald-500/10 text-emerald-400' :
+                                                record.status === 'FLAGGED' ? 'bg-rose-500/10 text-rose-400' : 'bg-amber-500/10 text-amber-400'
                                                 }`}>
-                                                {record.status === 'PRESENT' ? (
-                                                    <CheckCircle className="w-5 h-5 text-green-400" />
-                                                ) : record.status === 'FLAGGED' ? (
-                                                    <XCircle className="w-5 h-5 text-red-400" />
-                                                ) : (
-                                                    <AlertCircle className="w-5 h-5 text-amber-400" />
-                                                )}
+                                                {record.status === 'PRESENT' ? <CheckCircle size={24} /> :
+                                                    record.status === 'FLAGGED' ? <XCircle size={24} /> : <AlertCircle size={24} />}
                                             </div>
                                             <div>
-                                                <p className="text-white font-medium">{formatDate(record.attendanceDate)}</p>
-                                                <div className="flex items-center gap-3 text-slate-400 text-sm mt-1">
-                                                    <span className="flex items-center gap-1">
-                                                        <Clock className="w-3.5 h-3.5" />
-                                                        {formatTime(record.attendanceDate)}
-                                                    </span>
-                                                    <span className="flex items-center gap-1">
-                                                        <MapPin className="w-3.5 h-3.5" />
-                                                        {record.location || 'N/A'}
-                                                    </span>
+                                                <p className="text-white font-bold">{formatDate(record.attendanceDate)}</p>
+                                                <div className="flex items-center gap-4 text-slate-500 text-xs mt-1">
+                                                    <span className="flex items-center gap-1.5"><Clock size={12} /> {formatTime(record.attendanceDate)}</span>
+                                                    <span className="flex items-center gap-1.5"><MapPin size={12} /> {record.location || 'Campus Main'}</span>
                                                 </div>
                                             </div>
                                         </div>
-                                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${record.status === 'PRESENT' ? 'bg-green-500/20 text-green-400' :
-                                                record.status === 'FLAGGED' ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
-                                            }`}>
-                                            {record.status}
-                                        </span>
+                                        <div className="flex items-center gap-4">
+                                            <span className={`px-3 py-1 rounded-lg text-[10px] font-bold tracking-widest uppercase border ${record.status === 'PRESENT' ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/20' :
+                                                record.status === 'FLAGGED' ? 'bg-rose-500/5 text-rose-400 border-rose-500/20' : 'bg-amber-500/5 text-amber-400 border-amber-500/20'
+                                                }`}>
+                                                {record.status}
+                                            </span>
+                                            <ChevronRight className="w-5 h-5 text-slate-700 group-hover:text-slate-400 transition-colors" />
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         )}
                     </div>
                 </div>
-            </main>
-        </div>
+            </div>
+        </DashboardLayout>
     );
 };
 

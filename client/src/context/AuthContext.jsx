@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { authAPI } from '../services/api';
+import { authAPI, userAPI } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -8,21 +8,24 @@ export const AuthProvider = ({ children }) => {
     const [token, setToken] = useState(localStorage.getItem('attendiq_token'));
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (token) {
-            // Decode token to get user info (simplified - in production use jwt-decode)
-            try {
-                const payload = JSON.parse(atob(token.split('.')[1]));
-                setUser({
-                    email: payload.sub,
-                    role: payload.role || 'ROLE_STUDENT',
-                    fullName: localStorage.getItem('attendiq_name') || 'User',
-                });
-            } catch (e) {
-                logout();
-            }
+    const fetchUserProfile = async () => {
+        if (!token) {
+            setLoading(false);
+            return;
         }
-        setLoading(false);
+        try {
+            const response = await userAPI.getProfile();
+            setUser(response.data.data);
+        } catch (e) {
+            console.error('Failed to fetch profile:', e);
+            logout();
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchUserProfile();
     }, [token]);
 
     const login = async (email, password) => {
@@ -35,6 +38,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('attendiq_role', role);
 
         setToken(newToken);
+        // We set initial user info, fetchUserProfile will get the rest
         setUser({ email, fullName, role });
 
         return response.data;
@@ -54,6 +58,8 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    const refreshUser = () => fetchUserProfile();
+
     const isAdmin = () => user?.role === 'ROLE_ADMIN';
     const isTeacher = () => user?.role === 'ROLE_TEACHER';
     const isStudent = () => user?.role === 'ROLE_STUDENT';
@@ -65,6 +71,7 @@ export const AuthProvider = ({ children }) => {
             login,
             register,
             logout,
+            refreshUser,
             loading,
             isAdmin,
             isTeacher,
