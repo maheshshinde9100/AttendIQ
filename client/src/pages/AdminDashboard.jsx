@@ -394,17 +394,44 @@ const AdminDashboard = () => {
                                 </div>
 
                                 {aiAnalysis ? (
-                                    <div className="bg-slate-800/20 backdrop-blur-md rounded-2xl p-8 border border-white/5 relative overflow-hidden">
-                                        <div className="absolute top-0 right-0 w-32 h-32 bg-violet-600/10 blur-3xl rounded-full -mr-16 -mt-16" />
-                                        <div className="prose prose-invert max-w-none">
-                                            <p className="text-slate-300 leading-relaxed font-sans italic">
-                                                {aiAnalysis}
-                                            </p>
+                                    aiAnalysis.includes('unreachable') || aiAnalysis.includes('Internal Error') ? (
+                                        <div className="bg-amber-500/10 border border-amber-500/20 rounded-3xl p-8 animate-in fade-in duration-500">
+                                            <div className="flex gap-6 items-start">
+                                                <div className="p-4 bg-amber-500/20 rounded-2xl text-amber-400">
+                                                    <AlertTriangle size={32} />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h4 className="text-amber-400 font-bold text-lg mb-2">Inference Engine Offline</h4>
+                                                    <p className="text-slate-400 text-sm leading-relaxed mb-6">
+                                                        AttendIQ's predictive analysis requires a local <strong>Ollama</strong> instance.
+                                                        We couldn't connect to the Llama 3 model. Ensure the service is active on your machine.
+                                                    </p>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                        <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-1">
+                                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Step 1</p>
+                                                            <p className="text-white text-xs font-medium">Launch Ollama Desktop</p>
+                                                        </div>
+                                                        <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-1">
+                                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Step 2</p>
+                                                            <p className="text-white text-xs font-medium">ollama run llama3</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
+                                    ) : (
+                                        <div className="bg-slate-800/20 backdrop-blur-md rounded-2xl p-8 border border-white/5 relative overflow-hidden group">
+                                            <div className="absolute top-0 right-0 w-32 h-32 bg-violet-600/10 blur-3xl rounded-full -mr-16 -mt-16" />
+                                            <div className="prose prose-invert max-w-none">
+                                                <p className="text-slate-300 leading-relaxed font-sans italic text-lg">
+                                                    {aiAnalysis}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )
                                 ) : (
-                                    <div className="text-center py-24 bg-white/5 rounded-3xl border border-white/5 border-dashed">
-                                        <Brain className="w-16 h-16 text-slate-700 mx-auto mb-4" />
+                                    <div className="text-center py-24 bg-white/5 rounded-3xl border border-white/5 border-dashed group">
+                                        <Brain className="w-16 h-16 text-slate-700 mx-auto mb-4 group-hover:text-violet-500 group-hover:scale-110 transition-all duration-500" />
                                         <p className="text-slate-400 font-medium font-sans">Awaiting Instruction</p>
                                         <p className="text-slate-600 text-sm mt-1">Initiate analysis to see attendance trends and anomalies.</p>
                                     </div>
