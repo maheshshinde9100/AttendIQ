@@ -49,6 +49,12 @@ AttendIQ is a next-generation attendance management platform that leverages **Bi
 
 ---
 
+## System Architecture
+
+![AttendIQ System Architecture](system-architecture.png)
+
+---
+
 ## 🚦 Getting Started
 
 ### **Prerequisites**
