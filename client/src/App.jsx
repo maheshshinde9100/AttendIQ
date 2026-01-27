@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
 import StudentDashboard from './pages/StudentDashboard';
+import TeacherDashboard from './pages/TeacherDashboard';
 import AttendanceKiosk from './pages/AttendanceKiosk';
 import LandingPage from './pages/LandingPage';
 import Profile from './pages/Profile';
@@ -16,8 +17,12 @@ const DashboardRouter = () => {
   const { user } = useAuth();
 
   // Route based on role
-  if (user?.role === 'ROLE_ADMIN' || user?.role === 'ROLE_TEACHER') {
+  if (user?.role === 'ROLE_ADMIN') {
     return <AdminDashboard />;
+  }
+
+  if (user?.role === 'ROLE_TEACHER') {
+    return <TeacherDashboard />;
   }
 
   return <StudentDashboard />;
