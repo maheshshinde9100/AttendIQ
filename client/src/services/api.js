@@ -49,4 +49,20 @@ export const userAPI = {
     getAllUsers: () => api.get('/users'),
 };
 
+// Face Biometric APIs
+export const faceAPI = {
+    register: (embedding) => api.post('/face/register', { embedding }),
+    getEmbedding: () => api.get('/face/my-embedding'),
+};
+
+// Python Face Service (Direct call for embedding extraction)
+const PYTHON_SERVICE_URL = 'http://localhost:5000';
+export const pythonAPI = {
+    extractEmbedding: (base64Image) => {
+        const formData = new FormData();
+        formData.append('image_data', base64Image);
+        return axios.post(`${PYTHON_SERVICE_URL}/extract-embedding`, formData);
+    }
+};
+
 export default api;
