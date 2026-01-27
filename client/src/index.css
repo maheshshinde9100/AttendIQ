@@ -43,6 +43,10 @@ html {
     }
 }
 
+.mirror {
+  transform: scaleX(-1);
+}
+
 .animate-spin {
     animation: spin 1s linear infinite;
 }
